@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "alarm.h": "c",
+        "fcntl.h": "c",
+        "unistd.h": "c"
+    }
+}
