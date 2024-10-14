@@ -1,7 +1,14 @@
 {
-    "files.associations": {
-        "alarm.h": "c",
-        "fcntl.h": "c",
-        "unistd.h": "c"
-    }
+  "files.associations": {
+    "*.embeddedhtml": "html",
+    "*.js": "javascript",
+    "*.tpl": "php",
+    "*.pcss": "css",
+    ".env*": "dotenv",
+    "alarm.h": "c",
+    "fcntl.h": "c",
+    "unistd.h": "c",
+    "link_layer.h": "c",
+    "serial_port.h": "c"
+  }
 }
