@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "link_layer.h"
 #include "protocol.h"
@@ -19,36 +20,44 @@ LinkLayer connectionParameters;
 int alarmEnabled = FALSE;
 int alarmCount = 0;
 
-void alarmHandler(int signal) {
+void alarmHandler(int signal)
+{
   alarmCount++;
   alarmEnabled = TRUE;
 
   printf("Alarm Enabled! \n");
 }
 
-void alarmDisable() {
+void alarmDisable()
+{
   alarm(0);
   alarmEnabled = FALSE;
   alarmCount = 0;
 }
 
-int receiveFrame(unsigned char expectedAddress, unsigned char expectedControl) {
+int receiveFrame(uint8_t expectedAddress, uint8_t expectedControl)
+{
   t_state state = START;
 
   printf("\n Waiting for bytes to read... \n");
 
-  while (state != STOP) {
-    unsigned char buf = 0;
+  while (state != STOP)
+  {
+    uint8_t buf = 0;
     int bytes = readByteSerialPort(&buf);
 
-    if (bytes < 0) {
+    if (bytes < 0)
+    {
       printf("Error trying to read frame! \n");
       return -1;
     }
-    if (bytes > 0) {
+    
+    if (bytes > 0)
+    {
       printf("Read byte: 0x%02X \n", buf);
 
-      switch (state) {
+      switch (state)
+      {
         case START:
           if (buf == FLAG)
             state = FLAG_RCV;
@@ -120,27 +129,36 @@ int receiveFrame(unsigned char expectedAddress, unsigned char expectedControl) {
   return 0;
 }
 
-int transmitFrame(unsigned char expectedAddress, unsigned char expectedControl, t_frame_type frameType) {
+int transmitFrame(uint8_t expectedAddress, uint8_t expectedControl, t_frame_type frameType)
+{
   t_state state = START;
 
   (void)signal(SIGALRM, alarmHandler);
-  if(writeBytesSerialPort(frame_buffers[frameType], BUF_SIZE) < 0) return -1;
+
+  if (writeBytesSerialPort(frame_buffers[frameType], BUF_SIZE) < 0)
+    return -1;
+  
   printf("Wrote frame! \n");
 
   alarm(connectionParameters.timeout);
 
-  while (state != STOP && alarmCount <= connectionParameters.nRetransmissions) {
-    unsigned char buf = 0;
+  while (state != STOP && alarmCount <= connectionParameters.nRetransmissions)
+  {
+    uint8_t buf = 0;
     int bytes = readByteSerialPort(&buf);
 
-    if (bytes < 0) {
+    if (bytes < 0)
+    {
       printf("Error trying to read frame! \n");
       return -1;
     }
-    if (bytes > 0) {
+
+    if (bytes > 0)
+    {
       printf("Read byte: 0x%02X \n", buf);
 
-      switch (state) {
+      switch (state)
+      {
         case START:
           if (buf == FLAG)
             state = FLAG_RCV;
@@ -207,18 +225,22 @@ int transmitFrame(unsigned char expectedAddress, unsigned char expectedControl, 
 
     }
 
-    if(state == STOP) {
+    if (state == STOP)
+    {
       alarmDisable();
       return 0;
     }
 
-    if(alarmEnabled) {
+    if (alarmEnabled)
+    {
       alarmEnabled = FALSE;
 
-      if(alarmCount <= connectionParameters.nRetransmissions) {
-        if(writeBytesSerialPort(frame_buffers[frameType], BUF_SIZE) < 0) return -1;
-        printf("Retransmiting frame! \n");
+      if (alarmCount <= connectionParameters.nRetransmissions)
+      {
+        if (writeBytesSerialPort(frame_buffers[frameType], BUF_SIZE) < 0)
+            return -1;
 
+        printf("Retransmiting frame! \n");
         alarm(connectionParameters.timeout);
       }
 
@@ -234,22 +256,26 @@ int transmitFrame(unsigned char expectedAddress, unsigned char expectedControl, 
 // LLOPEN
 ////////////////////////////////////////////////
 
-int llopen(LinkLayer connection) {
+int llopen(LinkLayer connection)
+{
   memcpy(&connectionParameters, &connection, sizeof(connection));
+  
   if (openSerialPort(connectionParameters.serialPort,
-                     connectionParameters.baudRate) < 0) {
+                     connectionParameters.baudRate) < 0)
     return -1;
-  }
 
-  switch (connectionParameters.role) {
+  switch (connectionParameters.role)
+  {
     case LlTx:
-      if(transmitFrame(ADDR_SEND, CTRL_UA, SET)) return -1;
+      if (transmitFrame(ADDR_SEND, CTRL_UA, SET))
+        return -1;
       printf("Connected! \n");
       break;
-
     case LlRx:
-      if(receiveFrame(ADDR_SEND, CTRL_SET)) return -1;
-      if(writeBytesSerialPort(frame_buffers[UA_Rx], BUF_SIZE) < 0) return -1;
+      if (receiveFrame(ADDR_SEND, CTRL_SET))
+        return -1;
+      if (writeBytesSerialPort(frame_buffers[UA_Rx], BUF_SIZE) < 0)
+       return -1;
       printf("Connected! \n");
       break;
   }
@@ -278,21 +304,25 @@ int llread(unsigned char *packet) {
 ////////////////////////////////////////////////
 // LLCLOSE
 ////////////////////////////////////////////////
-int llclose(int showStatistics) {
-  switch (connectionParameters.role) {
+int llclose(int showStatistics)
+{
+  switch (connectionParameters.role)
+  {
     case LlTx:
-      if(transmitFrame(ADDR_RCV, CTRL_DISC, DISC_Tx)) return closeSerialPort();
-      if(writeBytesSerialPort(frame_buffers[UA_Tx], BUF_SIZE) < 0) return closeSerialPort();
+      if (transmitFrame(ADDR_RCV, CTRL_DISC, DISC_Tx))
+        break;
+      if (writeBytesSerialPort(frame_buffers[UA_Tx], BUF_SIZE) < 0)
+        break;
       printf("Disconnected! \n");
       break;
-
     case LlRx:
-      if(receiveFrame(ADDR_SEND, CTRL_DISC)) return closeSerialPort();
-      if(transmitFrame(ADDR_RCV, CTRL_UA, DISC_Rx)) return closeSerialPort();
+      if (receiveFrame(ADDR_SEND, CTRL_DISC))
+        break;
+      if (transmitFrame(ADDR_RCV, CTRL_UA, DISC_Rx))
+        break;
       printf("Disconnected! \n");
       break;
   }
 
-  int clstat = closeSerialPort();
-  return clstat;
+  return closeSerialPort();
 }

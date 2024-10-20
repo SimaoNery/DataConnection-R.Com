@@ -17,14 +17,16 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     connectionParameters.nRetransmissions = nTries;
     connectionParameters.timeout = timeout;
 
-    if(llopen(connectionParameters) < 0) {
+    if (llopen(connectionParameters) < 0)
+    {
         printf("Error trying to start connection! \n");
         exit(-1);
     }
 
     int statistics = FALSE;
 
-    if(llclose(statistics) < 0) {
+    if (llclose(statistics) < 0)
+    {
         printf("Error trying to disconnect! \n");
         exit(-1);
     }

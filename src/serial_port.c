@@ -42,36 +42,36 @@ int openSerialPort(const char *serialPort, int baudRate)
     tcflag_t br;
     switch (baudRate)
     {
-    case 1200:
-        br = B1200;
-        break;
-    case 1800:
-        br = B1800;
-        break;
-    case 2400:
-        br = B2400;
-        break;
-    case 4800:
-        br = B4800;
-        break;
-    case 9600:
-        br = B9600;
-        break;
-    case 19200:
-        br = B19200;
-        break;
-    case 38400:
-        br = B38400;
-        break;
-    case 57600:
-        br = B57600;
-        break;
-    case 115200:
-        br = B115200;
-        break;
-    default:
-        fprintf(stderr, "Unsupported baud rate (must be one of 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200)\n");
-        return -1;
+        case 1200:
+            br = B1200;
+            break;
+        case 1800:
+            br = B1800;
+            break;
+        case 2400:
+            br = B2400;
+            break;
+        case 4800:
+            br = B4800;
+            break;
+        case 9600:
+            br = B9600;
+            break;
+        case 19200:
+            br = B19200;
+            break;
+        case 38400:
+            br = B38400;
+            break;
+        case 57600:
+            br = B57600;
+            break;
+        case 115200:
+            br = B115200;
+            break;
+        default:
+            fprintf(stderr, "Unsupported baud rate (must be one of 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200)\n");
+            return -1;
     }
 
     // New port settings
