@@ -1,175 +1,298 @@
 // Link layer protocol implementation
 
-#include "link_layer.h"
-
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
+#include "link_layer.h"
 #include "protocol.h"
 #include "serial_port.h"
 
 // MISC
-#define _POSIX_SOURCE 1  // POSIX compliant source
+#define _POSIX_SOURCE 1 // POSIX compliant source
 
-////////////////////////////////////////////////
-// ALARM
-////////////////////////////////////////////////
+LinkLayer connectionParameters;
+
+// Alarm
 int alarmEnabled = FALSE;
-int alarmCount = -1;
-void (*alarmCallout)(void) = NULL;
+int alarmCount = 0;
 
-void setAlarm(int timeout, int retryNum, void (*callout)(void)) {
-    if (timeout < 1 || retryNum < 0 || callout == NULL)
-        return;
+void alarmHandler(int signal) {
+  alarmCount++;
+  alarmEnabled = TRUE;
 
-    alarmEnabled = TRUE;
-    alarmCount = retryNum;
-    alarmCallout = callout;
+  printf("Alarm Enabled! \n");
+}
 
-    (void)signal(SIGALRM, alarmCallout);
+void alarmDisable() {
+  alarm(0);
+  alarmEnabled = FALSE;
+  alarmCount = 0;
+}
 
-    walarmCallout();
-    while (alarmCount - 1) {
-        if (alarmEnabled == FALSE)
-            break;
+int receiveFrame(unsigned char expectedAddress, unsigned char expectedControl) {
+  t_state state = START;
 
-        alarm(timeout);
+  printf("\n Waiting for bytes to read... \n");
+
+  while (state != STOP) {
+    unsigned char buf = 0;
+    int bytes = readByteSerialPort(&buf);
+
+    if (bytes < 0) {
+      printf("Error trying to read frame! \n");
+      return -1;
     }
+    if (bytes > 0) {
+      printf("Read byte: 0x%02X \n", buf);
+
+      switch (state) {
+        case START:
+          if (buf == FLAG)
+            state = FLAG_RCV;
+          break;
+
+        case FLAG_RCV:
+          if (buf == FLAG)
+            continue;
+          if (buf == expectedAddress)
+            state = A_RCV;
+          else
+            state = START;
+          break;
+
+        case A_RCV:
+          if (buf == expectedControl)
+            state = C_RCV;
+          else if (buf == FLAG)
+            state = FLAG_RCV;
+          else
+            state = START;
+          break;
+
+        case C_RCV:
+          if (buf == (expectedControl ^ expectedAddress))
+            state = BCC_OK;
+          else if (buf == FLAG)
+            state = FLAG_RCV;
+          else
+            state = START;
+          break;
+
+        case BCC_OK:
+          if (buf == FLAG)
+            state = STOP;
+          else
+            state = START;
+          break;
+
+        default:
+          state = START;
+      }
+      
+      /*
+      if (state == START)
+        printf("Sent back to start! \n");
+
+      if (state == FLAG_RCV)
+        printf("Read flag! \n");
+
+      if (state == A_RCV)
+        printf("Read address! \n");
+
+      if (state == C_RCV)
+        printf("Read controller! \n");
+
+      if (state == BCC_OK)
+        printf("Read BCC! \n");
+
+      if (state == STOP) {
+        printf("Read the last flag! \n");
+        printf("Correctly read the header! \n");
+      }
+      */
+
+    }
+  }
+
+  return 0;
+}
+
+int transmitFrame(unsigned char expectedAddress, unsigned char expectedControl, t_frame_type frameType) {
+  t_state state = START;
+
+  (void)signal(SIGALRM, alarmHandler);
+  if(writeBytesSerialPort(frame_buffers[frameType], BUF_SIZE) < 0) return -1;
+  printf("Wrote frame! \n");
+
+  alarm(connectionParameters.timeout);
+
+  while (state != STOP && alarmCount <= connectionParameters.nRetransmissions) {
+    unsigned char buf = 0;
+    int bytes = readByteSerialPort(&buf);
+
+    if (bytes < 0) {
+      printf("Error trying to read frame! \n");
+      return -1;
+    }
+    if (bytes > 0) {
+      printf("Read byte: 0x%02X \n", buf);
+
+      switch (state) {
+        case START:
+          if (buf == FLAG)
+            state = FLAG_RCV;
+          break;
+
+        case FLAG_RCV:
+          if (buf == FLAG)
+            continue;
+          if (buf == expectedAddress)
+            state = A_RCV;
+          else
+            state = START;
+          break;
+
+        case A_RCV:
+          if (buf == expectedControl)
+            state = C_RCV;
+          else if (buf == FLAG)
+            state = FLAG_RCV;
+          else
+            state = START;
+          break;
+
+        case C_RCV:
+          if (buf == (expectedControl ^ expectedAddress))
+            state = BCC_OK;
+          else if (buf == FLAG)
+            state = FLAG_RCV;
+          else
+            state = START;
+          break;
+
+        case BCC_OK:
+          if (buf == FLAG)
+            state = STOP;
+          else
+            state = START;
+          break;
+
+        default:
+          state = START;
+      }
+
+      /*
+      if (state == START)
+        printf("Sent back to start! \n");
+
+      if (state == FLAG_RCV)
+        printf("Read flag! \n");
+
+      if (state == A_RCV)
+        printf("Read address! \n");
+
+      if (state == C_RCV)
+        printf("Read controller! \n");
+
+      if (state == BCC_OK)
+        printf("Read BCC! \n");
+
+      if (state == STOP) {
+        printf("Read the last flag! \n");
+        printf("Correctly read the header! \n");
+      }*/
+
+    }
+
+    if(state == STOP) {
+      alarmDisable();
+      return 0;
+    }
+
+    if(alarmEnabled) {
+      alarmEnabled = FALSE;
+
+      if(alarmCount <= connectionParameters.nRetransmissions) {
+        if(writeBytesSerialPort(frame_buffers[frameType], BUF_SIZE) < 0) return -1;
+        printf("Retransmiting frame! \n");
+
+        alarm(connectionParameters.timeout);
+      }
+
+      state = START;      
+    }
+  }
+
+  alarmDisable();
+  return 0;
 }
 
 ////////////////////////////////////////////////
 // LLOPEN
 ////////////////////////////////////////////////
 
-void llopenTxHandler();
+int llopen(LinkLayer connection) {
+  memcpy(&connectionParameters, &connection, sizeof(connection));
+  if (openSerialPort(connectionParameters.serialPort,
+                     connectionParameters.baudRate) < 0) {
+    return -1;
+  }
 
-int llopen(LinkLayer connectionParameters) {
-    if (openSerialPort(connectionParameters.serialPort,
-                       connectionParameters.baudRate) < 0) {
-        return -1;
-    }
+  switch (connectionParameters.role) {
+    case LlTx:
+      if(transmitFrame(ADDR_SEND, CTRL_UA, SET)) return -1;
+      printf("Connected! \n");
+      break;
 
-    switch (connectionParameters.role) {
-        case LlTx:
-            setAlarm(connectionParameters.timeout, connectionParameters.nRetransmissions, llopenTxHandler);
-            break;
-        case LlRx:
-            unsigned char buf;
-            unsigned char ret_buf[BUF_SIZE] = {FLAG, ADDR_RX, CTRL_UA, ADDR_RX ^ CTRL_UA, FLAG};
-            t_state_header state = START;
-            while (state != STOP) {
-                int bytes = readByteSerialPort(&buf);
-                if (bytes <= 0) {
-                    perror("read error or unexpected eof");
-                    exit(-1);
-                }
+    case LlRx:
+      if(receiveFrame(ADDR_SEND, CTRL_SET)) return -1;
+      if(writeBytesSerialPort(frame_buffers[UA_Rx], BUF_SIZE) < 0) return -1;
+      printf("Connected! \n");
+      break;
+  }
 
-                switch (state) {
-                    case START:
-                        state = buf == FLAG ? FLAG_RCV : START;
-                        break;
-                    case FLAG_RCV:
-                        state = buf == ADDR_TX ? A_RCV : buf == FLAG ? FLAG_RCV
-                                                                     : START;
-                        break;
-                    case A_RCV:
-                        state = buf == CTRL_SET ? C_RCV : buf == FLAG ? FLAG_RCV
-                                                                      : START;
-                        break;
-                    case C_RCV:
-                        state = buf == (ADDR_TX ^ CTRL_SET) ? BCC_OK : buf == FLAG ? FLAG_RCV
-                                                                                   : START;
-                        break;
-                    case BCC_OK:
-                        state = buf == FLAG ? STOP : START;
-                        break;
-                }
-
-                if (state == START)
-                    printf("got back start\n");
-                if (state == FLAG_RCV)
-                    printf("got a flag\n");
-
-                if (state == STOP) {
-                    writeBytesSerialPort(ret_buf, BUF_SIZE);
-                    printf("Correctly received header\n");
-                }
-            }
-            break;
-    }
-
-    return 1;
-}
-
-void llopenTxHandler() {
-    int bytes = writeBytesSerialPort(txSetBuffer, BUF_SIZE);
-
-    unsigned char buf;
-    t_state_header state = START;
-    while (state != STOP) {
-        int bytes = readByteSerialPort(&buf);
-        if (bytes <= 0) {
-            perror("read error or unexpected eof");
-            exit(-1);
-        }
-
-        switch (state) {
-            case START:
-                state = buf == FLAG ? FLAG_RCV : START;
-                break;
-            case FLAG_RCV:
-                state = buf == ADDR_TX ? A_RCV : buf == FLAG ? FLAG_RCV
-                                                             : START;
-                break;
-            case A_RCV:
-                state = buf == CTRL_UA ? C_RCV : buf == FLAG ? FLAG_RCV
-                                                             : START;
-                break;
-            case C_RCV:
-                state = buf == (ADDR_TX ^ CTRL_UA) ? BCC_OK : buf == FLAG ? FLAG_RCV
-                                                                          : START;
-                break;
-            case BCC_OK:
-                state = buf == FLAG ? STOP : START;
-                break;
-        }
-
-        if (state == START)
-            printf("got back start\n");
-        if (state == FLAG_RCV)
-            printf("got a flag\n");
-
-        if (state == STOP) {
-            alarmEnabled = FALSE;
-            printf("Correctly received header\n");
-        }
-    }
+  return 0;
 }
 
 ////////////////////////////////////////////////
 // LLWRITE
 ////////////////////////////////////////////////
 int llwrite(const unsigned char *buf, int bufSize) {
-    // TODO
+  // TODO
 
-    return 0;
+  return 0;
 }
 
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
 int llread(unsigned char *packet) {
-    // TODO
+  // TODO
 
-    return 0;
+  return 0;
 }
 
 ////////////////////////////////////////////////
 // LLCLOSE
 ////////////////////////////////////////////////
 int llclose(int showStatistics) {
-    // TODO
+  switch (connectionParameters.role) {
+    case LlTx:
+      if(transmitFrame(ADDR_RCV, CTRL_DISC, DISC_Tx)) return closeSerialPort();
+      if(writeBytesSerialPort(frame_buffers[UA_Tx], BUF_SIZE) < 0) return closeSerialPort();
+      printf("Disconnected! \n");
+      break;
 
-    int clstat = closeSerialPort();
-    return clstat;
+    case LlRx:
+      if(receiveFrame(ADDR_SEND, CTRL_DISC)) return closeSerialPort();
+      if(transmitFrame(ADDR_RCV, CTRL_UA, DISC_Rx)) return closeSerialPort();
+      printf("Disconnected! \n");
+      break;
+  }
+
+  int clstat = closeSerialPort();
+  return clstat;
 }
