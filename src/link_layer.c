@@ -201,28 +201,6 @@ int transmitFrame(uint8_t expectedAddress, uint8_t expectedControl, t_frame_type
         default:
           state = START;
       }
-
-      /*
-      if (state == START)
-        printf("Sent back to start! \n");
-
-      if (state == FLAG_RCV)
-        printf("Read flag! \n");
-
-      if (state == A_RCV)
-        printf("Read address! \n");
-
-      if (state == C_RCV)
-        printf("Read controller! \n");
-
-      if (state == BCC_OK)
-        printf("Read BCC! \n");
-
-      if (state == STOP) {
-        printf("Read the last flag! \n");
-        printf("Correctly read the header! \n");
-      }*/
-
     }
 
     if (state == STOP)
@@ -281,6 +259,63 @@ int llopen(LinkLayer connection)
   }
 
   return 0;
+}
+
+const uint8_t *byteStuffing(const uint8_t *buf, int bufSize, int *stuffedSize)
+{
+  if (buf == NULL || stuffedSize == NULL)
+    return NULL;
+    
+  uint8_t *ret = (uint8_t *)malloc(2 * bufSize * sizeof(uint8_t) + 1);
+  int stuffedIndex = 0;
+
+  for (int i = 0; i < bufSize; i++)
+  {
+    if (buf[i] == FLAG || buf[i] == ESCAPE)
+    {
+      ret[stuffedIndex++] = ESCAPE;
+      ret[stuffedIndex++] = buf[i] ^ ESCAPE_OFFSET;
+      continue;
+    }
+
+    ret[stuffedIndex++] = buf[i];
+  }
+
+  *stuffedSize = stuffedIndex;
+  ret = realloc(ret, stuffedIndex * sizeof(uint8_t));
+
+  if (ret == NULL)
+    return NULL;
+  
+  return ret;
+}
+
+uint8_t *byteDestuffing(const uint8_t *buf, int bufSize, int *destuffedSize)
+{
+  if (buf == NULL || destuffedSize == NULL)
+    return NULL;
+
+  uint8_t *ret = (uint8_t *)malloc(bufSize * sizeof(uint8_t));
+  int destuffedIndex = 0;
+
+  for (int i = 0; i < bufSize; i++)
+  {
+    if (buf[i] == ESCAPE && i + 1 < bufSize)
+    {
+      ret[destuffedIndex++] = buf[++i] ^ ESCAPE_OFFSET;
+      continue;
+    }
+    
+    ret[destuffedIndex++] = buf[i];
+  }
+
+  *destuffedSize = destuffedIndex;
+  ret = realloc(ret, destuffedIndex * sizeof(uint8_t));
+
+  if (ret == NULL)
+    return NULL;
+
+  return ret;
 }
 
 ////////////////////////////////////////////////

@@ -8,8 +8,7 @@
 
 //Byte Stuffing
 #define ESCAPE 0x7D 
-#define ESC_FLAG 0x5E
-#define ESC_ESC 0x5D
+#define ESCAPE_OFFSET 0x20
 
 // Address field (A)
 #define ADDR_SEND 0x03
@@ -28,6 +27,7 @@
 #define CTRL_INFO1 0x01
 
 #define BUF_SIZE 5
+
 unsigned char SET_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_SET, ADDR_SEND ^ CTRL_SET, FLAG};
 unsigned char UA_Rx_Response[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_UA, ADDR_SEND ^ CTRL_UA, FLAG};
 unsigned char UA_Tx_Response[BUF_SIZE] = {FLAG, ADDR_RCV, CTRL_UA, ADDR_RCV ^ CTRL_UA, FLAG};
