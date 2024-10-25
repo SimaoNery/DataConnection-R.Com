@@ -6,8 +6,8 @@
 // Bit at start and end of frame
 #define FLAG 0x7E
 
-//Byte Stuffing
-#define ESCAPE 0x7D 
+// Byte Stuffing
+#define ESCAPE 0x7D
 #define ESCAPE_OFFSET 0x20
 
 // Address field (A)
@@ -33,32 +33,42 @@ unsigned char UA_Rx_Response[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_UA, ADDR_SEND ^ 
 unsigned char UA_Tx_Response[BUF_SIZE] = {FLAG, ADDR_RCV, CTRL_UA, ADDR_RCV ^ CTRL_UA, FLAG};
 unsigned char DISC_Rx_Command[BUF_SIZE] = {FLAG, ADDR_RCV, CTRL_DISC, ADDR_RCV ^ CTRL_DISC, FLAG};
 unsigned char DISC_Tx_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_DISC, ADDR_SEND ^ CTRL_DISC, FLAG};
+unsigned char RR0_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_RR0, ADDR_SEND ^ CTRL_RR0, FLAG};
+unsigned char RR1_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_RR1, ADDR_SEND ^ CTRL_RR1, FLAG};
+unsigned char REJ0_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_REJ0, ADDR_SEND ^ CTRL_REJ0, FLAG};
+unsigned char REJ1_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_REJ1, ADDR_SEND ^ CTRL_REJ1, FLAG};
+
 
 typedef enum e_frame_type {
-    SET,
-    UA_Rx,
-    UA_Tx,
-    DISC_Rx,
-    DISC_Tx
+  SET,
+  UA_Rx,
+  UA_Tx,
+  DISC_Rx,
+  DISC_Tx,
+  RR0,
+  RR1
 } t_frame_type;
 
-unsigned char* frame_buffers[] = {
-    SET_Command,
-    UA_Rx_Response,
-    UA_Tx_Response,
-    DISC_Rx_Command,
-    DISC_Tx_Command
+unsigned char *frame_buffers[] = {
+  SET_Command,
+  UA_Rx_Response,
+  UA_Tx_Response,
+  DISC_Rx_Command,
+  DISC_Tx_Command,
+  RR0_Command,
+  RR1_Command,
+  REJ0_Command,
+  REJ1_Command
 };
 
 typedef enum e_state {
-    START,
-    FLAG_RCV,
-    A_RCV,
-    C_RCV,
-    BCC_OK,
-    DATA_RCV,
-    STOP
+  START,
+  FLAG_RCV,
+  A_RCV,
+  C_RCV,
+  BCC_OK,
+  DATA_RCV,
+  STOP
 } t_state;
-
 
 #endif
