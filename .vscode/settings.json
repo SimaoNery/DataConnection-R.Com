@@ -9,8 +9,10 @@
     "fcntl.h": "c",
     "unistd.h": "c",
     "link_layer.h": "c",
-    "serial_port.h": "c"
-  },
+    "serial_port.h": "c",
+    "application_layer.h": "c",
+    "utils.h": "c"
+},
 
   "editor.tabSize": 4,
   "editor.insertSpaces": true,

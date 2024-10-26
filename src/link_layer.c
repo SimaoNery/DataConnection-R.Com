@@ -338,13 +338,13 @@ int llwrite(const unsigned char *packet, int packetSize) {
     return -1;
   
   uint8_t *frame = assembleFrame(stuffedPacket, stuffedSize, packet, packetSize);
-  if(frame == NULL) return (free(stuffedPacket), -1);
+  if(frame == NULL) return free(stuffedPacket), -1;
 
   t_state state = START;
   (void) signal(SIGALRM, alarmHandler);
 
   if (writeBytesSerialPort(frame, stuffedSize + 6) < 0)
-    return (free(stuffedPacket), free(frame), -1);
+    return free(stuffedPacket), free(frame), -1;
 
   alarm(connectionParameters.timeout);
 
@@ -354,7 +354,7 @@ int llwrite(const unsigned char *packet, int packetSize) {
     int retv = readByteSerialPort(&buf);
 
     if (retv < 0)
-      return (free(stuffedPacket), free(frame), -1);
+      return free(stuffedPacket), free(frame), -1;
 
     if (retv > 0) {
       switch (state) {
@@ -417,7 +417,7 @@ int llwrite(const unsigned char *packet, int packetSize) {
         alarmDisable();
         frameNumber = 1 - frameNumber;
 
-        return (free(stuffedPacket), free(frame), packetSize);
+        return free(stuffedPacket), free(frame), packetSize;
       }
     }
 
@@ -426,7 +426,7 @@ int llwrite(const unsigned char *packet, int packetSize) {
 
       if (alarmCount <= connectionParameters.nRetransmissions) {
         if (writeBytesSerialPort(frame, stuffedSize + 6) < 0)
-          return (free(stuffedPacket), free(frame), -1);
+          return free(stuffedPacket), free(frame), -1;
 
         alarm(connectionParameters.timeout);
       }
@@ -436,7 +436,7 @@ int llwrite(const unsigned char *packet, int packetSize) {
   }
 
   alarmDisable();
-  return (free(stuffedPacket), free(frame), -1);
+  return free(stuffedPacket), free(frame), -1;
 }
 
 ////////////////////////////////////////////////

@@ -8,6 +8,9 @@
 #define DATA 2
 #define CTRL_END 3
 
+#define TYPE_FSIZE 0
+#define TYPE_FNAME 1
+
 // Bit at start and end of frame
 #define FLAG 0x7E
 
@@ -42,7 +45,6 @@ unsigned char RR0_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_RR0, ADDR_SEND ^ CT
 unsigned char RR1_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_RR1, ADDR_SEND ^ CTRL_RR1, FLAG};
 unsigned char REJ0_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_REJ0, ADDR_SEND ^ CTRL_REJ0, FLAG};
 unsigned char REJ1_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_REJ1, ADDR_SEND ^ CTRL_REJ1, FLAG};
-
 
 typedef enum e_frame_type {
   SET,
