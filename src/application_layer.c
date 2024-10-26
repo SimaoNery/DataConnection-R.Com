@@ -16,7 +16,6 @@ typedef struct s_file {
   size_t  receivedSize;
 } t_file;
 
-int statistics = FALSE;
 
 int sendDataPacket(size_t dataSize, size_t sequenceNumber,  uint8_t *data) {
   if(data == NULL) return -1;
@@ -143,22 +142,164 @@ int parseControlPacket(t_file *file, uint8_t *packet, int *isReceiving)
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename) {  
+  if(serialPort == NULL || role == NULL || filename == NULL) {
+    printf("Error trying to initialize the application layer protocol! \n");
+    exit(-1);
+  } 
+
   LinkLayer connectionParameters;
   strcpy(connectionParameters.serialPort, serialPort);
   connectionParameters.role = strcmp(role, "tx") ? LlRx : LlTx;
   connectionParameters.baudRate = baudRate,
   connectionParameters.nRetransmissions = nTries;
   connectionParameters.timeout = timeout;
-  
-  t_file file;
-  (void)file;
+
+  size_t bytes = 0;
+  t_file fileInfo;
+  FILE *file;
+  uint8_t *buffer;
 
   if (llopen(connectionParameters) < 0) {
     printf("Error trying to start connection! \n");
-    exit(-1);
+    llclose(FALSE);
+    return;
   }
 
-  if (llclose(statistics) < 0) {
+  switch (connectionParameters.role)
+  {
+  case LlTx:
+    file = fopen(filename, "rb");
+    if(file == NULL) {
+      printf("Couldn't find the file! \n");
+      llclose(FALSE);
+      return;
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    break;
+
+    if(sendControlPacket(CTRL_START, filename, fileSize) < 0) {
+      printf("Couln't send control packet! \n");
+      fclose(file);
+      llclose(FALSE);
+      return;
+    }
+
+    bytes = 0;
+    buffer = malloc(MAX_PAYLOAD_SIZE + 20);
+    if(buffer == NULL) {
+      printf("Couldn't allocate buffer memory! \n");
+      llclose(FALSE);
+      return;
+    }
+
+    size_t sequenceNumber = 0;
+    while((bytes = fread(buffer, 1, MAX_PAYLOAD_SIZE, file)) > 0) {
+      size_t sendedData = sendDataPacket(bytes, sequenceNumber, buffer);
+      if(sendedData < 0) {
+        printf("Error sending data packet! \n");
+        free(buffer);
+        fclose(file);
+        llclose(FALSE);
+        return;
+      }
+      
+      sequenceNumber = sequenceNumber >= 99 ? 0 : sequenceNumber+1;
+    }
+
+    if(sendControlPacket(CTRL_END, filename, fileSize) < 0) {
+      printf("Error sending end control packet! \n");
+      fclose(file);
+      free(buffer);
+      llclose(FALSE);
+      return;
+    }
+
+    fclose(file);
+    free(buffer);
+    break;
+
+  case LlRx:
+    file = fopen(filename, "wb");
+    if(file == NULL) {
+      printf("Couldn't find the file! \n");
+      llclose(FALSE);
+      return;
+    }
+
+    buffer = malloc(MAX_PAYLOAD_SIZE + 20);
+    if(buffer == NULL) {
+      printf("Couldn't allocate buffer memory! \n");
+      llclose(FALSE);
+      return;
+    }
+
+    uint8_t *packet = malloc(MAX_PAYLOAD_SIZE + 20);
+    if(packet == NULL) {
+      printf("Couldn't allocate packet memory! \n");
+      free(buffer);
+      llclose(FALSE);
+      return;
+    }
+
+    bytes = 0;
+    int isReceiving = TRUE;
+    int expectedNumber = 0;
+
+    while(isReceiving) {
+      bytes = llread(buffer);
+      if(bytes < 0) {
+        printf("Failed to read! \n");
+        fclose(file);
+        free(buffer);
+        llclose(FALSE);
+        return;
+      }
+
+      if(buffer[0] == CTRL_START || buffer[0] == CTRL_END) {
+        if(parseControlPacket(&fileInfo, packet, &isReceiving) < 0) {
+          printf("Error parsing control packet! \n");
+          
+          fclose(file);
+          free(buffer);
+          free(packet);
+          llclose(FALSE);
+          return;
+        }
+      } 
+
+      if(buffer[0] == DATA) {
+        uint8_t *receivedData = parseDataPacket(packet, expectedNumber, &bytes);
+        if(receivedData == NULL) {
+          printf("Error parsing data packet! \n");
+
+          fclose(file);
+          free(buffer);
+          free(packet);
+          llclose(FALSE);
+          return;
+        }
+
+        fwrite(receivedData, sizeof(uint8_t), bytes, file);
+        fileInfo.receivedSize += bytes; 
+        free(receivedData);
+
+        expectedNumber = expectedNumber >= 99 ? 0 : expectedNumber+1;
+      }
+    }
+
+    fclose(file);
+    free(buffer);
+    free(packet);
+    break;
+  
+  default:
+    break;
+  }
+
+  if (llclose(TRUE) < 0) {
     printf("Error trying to disconnect! \n");
     exit(-1);
   }

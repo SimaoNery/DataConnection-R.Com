@@ -33,7 +33,6 @@
 
 #define CTRL_INFO0 0x00
 #define CTRL_INFO1 0x01
-
 #define BUF_SIZE 5
 
 unsigned char SET_Command[BUF_SIZE] = {FLAG, ADDR_SEND, CTRL_SET, ADDR_SEND ^ CTRL_SET, FLAG};

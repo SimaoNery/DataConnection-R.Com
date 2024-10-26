@@ -574,6 +574,7 @@ int llclose(int showStatistics) {
         break;
       printf("Disconnected! \n");
       break;
+      
     case LlRx:
       if (receiveFrame(ADDR_SEND, CTRL_DISC))
         break;
