@@ -296,6 +296,35 @@ uint8_t *byteDestuffing(const uint8_t *buf, int bufSize, int *destuffedSize) {
   return ret;
 }
 
+uint8_t *assembleFrame(const uint8_t *stuffedPacket, int stuffedSize, const unsigned char *packet, int packetSize) {
+  uint8_t *frame = malloc(stuffedSize + 7 * sizeof(uint8_t));
+  if (frame == NULL) return NULL;
+
+  frame[0] = FLAG;
+  frame[1] = ADDR_SEND;
+  frame[2] = frameNumber ? CTRL_INFO0 : CTRL_INFO1;
+  frame[3] = frame[1] ^ frame[2];
+
+  memcpy(frame + 4, stuffedPacket, stuffedSize);
+
+  uint8_t bcc = 0;
+  for (int i = 0; i < packetSize; i++)
+    bcc ^= packet[i];
+
+  if (bcc == FLAG || bcc == ESCAPE) {
+    frame[4 + stuffedSize] = ESCAPE;
+    frame[5 + stuffedSize] = bcc ^ ESCAPE_OFFSET;
+    stuffedSize++;
+  }
+  else {
+    frame[4 + stuffedSize] = bcc;
+  }
+
+  frame[5 + stuffedSize] = FLAG;
+
+  return frame;
+}
+
 ////////////////////////////////////////////////
 // LLWRITE
 ////////////////////////////////////////////////
@@ -307,31 +336,9 @@ int llwrite(const unsigned char *packet, int packetSize) {
   uint8_t *stuffedPacket = byteStuffing(packet, packetSize, &stuffedSize);
   if (stuffedPacket == NULL)
     return -1;
-
-  uint8_t *frame = malloc(stuffedSize + 7 * sizeof(uint8_t));
-
-  if (frame == NULL)
-    return (free(stuffedPacket), -1);
-
-  frame[0] = FLAG;
-  frame[1] = ADDR_SEND;
-  frame[2] = frameNumber ? CTRL_INFO0 : CTRL_INFO1;
-  frame[3] = frame[1] ^ frame[2];
-  memcpy(frame + 4, stuffedPacket, stuffedSize);
-
-  uint8_t bcc = 0;
-  for (int i = 0; i < packetSize; i++)
-    bcc ^= packet[i];
-
-  frame[4 + stuffedSize] = bcc;
-
-  if (bcc == FLAG || bcc == ESCAPE) {
-    frame[4 + stuffedSize] = ESCAPE;
-    frame[5 + stuffedSize] = bcc ^ ESCAPE_OFFSET;
-    stuffedSize++;
-  }
-
-  frame[5 + stuffedSize] = FLAG;
+  
+  uint8_t *frame = assembleFrame(stuffedPacket, stuffedSize, packet, packetSize);
+  if(frame == NULL) return (free(stuffedPacket), -1);
 
   t_state state = START;
   (void) signal(SIGALRM, alarmHandler);

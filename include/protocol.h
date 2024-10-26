@@ -3,6 +3,11 @@
 
 #define BIT(x) (1 << x)
 
+//Application Layer
+#define CTRL_START 1
+#define DATA 2
+#define CTRL_END 3
+
 // Bit at start and end of frame
 #define FLAG 0x7E
 
