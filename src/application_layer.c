@@ -2,13 +2,19 @@
 
 #include "application_layer.h"
 #include "link_layer.h"
-#include "protocol.h"
 #include "utils.h"
 
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define CTRL_START 1
+#define DATA 2
+#define CTRL_END 3
+
+#define TYPE_FSIZE 0
+#define TYPE_FNAME 1
 
 typedef struct s_file {
   size_t  size;

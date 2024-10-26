@@ -1,15 +1,7 @@
-#ifndef PROTOCOL_H
-#define PROTOCOL_H
+#ifndef _PROTOCOL_H_
+#define _PROTOCOL_H_
 
 #define BIT(x) (1 << x)
-
-//Application Layer
-#define CTRL_START 1
-#define DATA 2
-#define CTRL_END 3
-
-#define TYPE_FSIZE 0
-#define TYPE_FNAME 1
 
 // Bit at start and end of frame
 #define FLAG 0x7E
