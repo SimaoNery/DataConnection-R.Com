@@ -138,19 +138,19 @@ int parseControlPacket(t_file *file, uint8_t *packet, int *isReceiving) {
     if (file->size != file->receivedSize) {
       printf("Size at start and size at end differ (%ld vs %ld)\n",
              file->size, file->receivedSize);
-      return free(fileName), -1;
+      return free(fileName), free(v1), -1;
     }
     if (strcmp(file->name, fileName) != 0) {
       printf("Name at start and name at end differ (%s vs %s)\n",
              file->name, fileName);
-      return free(fileName), -1;
+      return free(fileName), free(v1), -1;
     }
 
     printf("Finished reception of file '%s'\n", fileName);
     free(fileName);
   }
 
-  return 0;
+  return free(v1), 0;
 }
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
@@ -269,13 +269,16 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
       while (isReceiving) {
         bytes = llread(buffer);
-        if (bytes < 0) {
+        if (bytes <= 0) {
           printf("Failed to read! \n");
           fclose(file);
           free(buffer);
           llclose(FALSE);
           return;
         }
+
+        if (bytes == 0)
+            continue;
 
         printf("buffer[0] value: %d\n", buffer[0]);
 
@@ -307,7 +310,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
           fwrite(receivedData, sizeof(uint8_t), bytes, file);
           fileInfo.receivedSize += bytes;
-          free(receivedData);
 
           expectedNumber = expectedNumber >= 99 ? 0 : expectedNumber + 1;
         }

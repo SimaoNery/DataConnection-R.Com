@@ -3,7 +3,7 @@
 
 # Parameters
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall
 
 SRC = src/
 INCLUDE = include/
@@ -30,11 +30,11 @@ $(BIN)/cable: $(CABLE_DIR)/cable.c
 
 .PHONY: run_tx
 run_tx: $(BIN)/main
-	valgrind ./$(BIN)/main $(TX_SERIAL_PORT) $(BAUD_RATE) tx $(TX_FILE)
+	./$(BIN)/main $(TX_SERIAL_PORT) $(BAUD_RATE) tx $(TX_FILE)
 
 .PHONY: run_rx
 run_rx: $(BIN)/main
-	valgrind ./$(BIN)/main $(RX_SERIAL_PORT) $(BAUD_RATE) rx $(RX_FILE)
+	./$(BIN)/main $(RX_SERIAL_PORT) $(BAUD_RATE) rx $(RX_FILE)
 
 .PHONY: run_cable
 run_cable: $(BIN)/cable

@@ -284,8 +284,8 @@ uint8_t *byteDestuffing(const uint8_t *buf, int bufSize, int *destuffedSize) {
   }
 
   *destuffedSize = destuffedIndex;
-  ret = realloc(ret, destuffedIndex * sizeof(uint8_t));
 
+  ret = realloc(ret, destuffedIndex * sizeof(uint8_t));
   if (ret == NULL)
     return NULL;
 
@@ -346,7 +346,7 @@ int llwrite(const unsigned char *packet, int packetSize) {
 
   alarm(connectionParameters.timeout);
 
-  uint8_t receivedAddr = 0, receivedCtrl = 0;
+  uint8_t receivedCtrl = 0;
   while (state != STOP && alarmCount <= connectionParameters.nRetransmissions) {
     uint8_t buf = 0;
     int retv = readByteSerialPort(&buf);
@@ -357,7 +357,6 @@ int llwrite(const unsigned char *packet, int packetSize) {
     if (retv > 0) {
       switch (state) {
         case START:
-          receivedAddr = 0;
           receivedCtrl = 0;
           if (buf == FLAG)
             state = FLAG_RCV;
@@ -367,7 +366,6 @@ int llwrite(const unsigned char *packet, int packetSize) {
             continue;
           if (buf == ADDR_SEND || buf == A_RCV) {
             state = A_RCV;
-            receivedAddr = buf;
           }
           else
             state = START;
@@ -544,7 +542,6 @@ int llread(unsigned char *packet) {
 
               // TODO: Add bytes read and number of frames to stats
 
-              free(packet);
               memcpy(packet, destuffedPacket, newSize);
               return newSize;
             }
