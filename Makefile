@@ -49,3 +49,16 @@ clean:
 	rm -f $(BIN)/main
 	rm -f $(BIN)/cable
 	rm -f $(RX_FILE)
+
+# TODO: Remove lines below before delivery
+.PHONY: debug
+debug: CFLAGS += -g
+debug: $(BIN)/main
+
+.PHONY: run_tx_val
+run_tx_val: $(BIN)/main
+	valgrind --leak-check=full ./$(BIN)/main $(TX_SERIAL_PORT) $(BAUD_RATE) tx $(TX_FILE)
+
+.PHONY: run_rx_val
+run_rx_val: $(BIN)/main
+	valgrind --leak-check=full ./$(BIN)/main $(RX_SERIAL_PORT) $(BAUD_RATE) rx $(RX_FILE)
