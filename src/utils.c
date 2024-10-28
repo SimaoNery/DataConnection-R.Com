@@ -48,6 +48,6 @@ size_t uatoi(uint8_t* n, uint8_t size)
     if (n == NULL)
         return 0;
     for (uint8_t i = 0; i < size; i++)
-        ret = ret * 10 + n[i];
+        ret = ret * 10 + n[i] - '0';
     return ret;
 }

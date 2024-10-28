@@ -25,8 +25,6 @@ int alarmCount = 0;
 void alarmHandler(int signal) {
   alarmCount++;
   alarmEnabled = TRUE;
-
-  printf("Alarm Enabled! \n");
 }
 
 void alarmDisable() {
@@ -50,8 +48,6 @@ int receiveFrame(uint8_t expectedAddress, uint8_t expectedControl) {
     }
 
     if (retv > 0) {
-      printf("Read byte: 0x%02X \n", buf);
-
       switch (state) {
         case START:
           if (buf == FLAG)
@@ -231,14 +227,14 @@ int llopen(LinkLayer connection) {
     case LlTx:
       if (transmitFrame(ADDR_SEND, CTRL_UA, SET))
         return -1;
-      printf("Connected! \n");
+      printf("Transmiter Connected! \n");
       break;
     case LlRx:
       if (receiveFrame(ADDR_SEND, CTRL_SET))
         return -1;
       if (writeBytesSerialPort(frame_buffers[UA_Rx], BUF_SIZE) < 0)
         return -1;
-      printf("Connected! \n");
+      printf("Receiver Connected! \n");
       break;
   }
 
@@ -298,11 +294,12 @@ uint8_t *byteDestuffing(const uint8_t *buf, int bufSize, int *destuffedSize) {
 
 uint8_t *assembleFrame(const uint8_t *stuffedPacket, int stuffedSize, const unsigned char *packet, int packetSize) {
   uint8_t *frame = malloc(stuffedSize + 7 * sizeof(uint8_t));
-  if (frame == NULL) return NULL;
+  if (frame == NULL)
+    return NULL;
 
   frame[0] = FLAG;
   frame[1] = ADDR_SEND;
-  frame[2] = frameNumber ? CTRL_INFO0 : CTRL_INFO1;
+  frame[2] = frameNumber ? CTRL_INFO1 : CTRL_INFO0;
   frame[3] = frame[1] ^ frame[2];
 
   memcpy(frame + 4, stuffedPacket, stuffedSize);
@@ -336,9 +333,10 @@ int llwrite(const unsigned char *packet, int packetSize) {
   uint8_t *stuffedPacket = byteStuffing(packet, packetSize, &stuffedSize);
   if (stuffedPacket == NULL)
     return -1;
-  
+
   uint8_t *frame = assembleFrame(stuffedPacket, stuffedSize, packet, packetSize);
-  if(frame == NULL) return free(stuffedPacket), -1;
+  if (frame == NULL)
+    return free(stuffedPacket), -1;
 
   t_state state = START;
   (void) signal(SIGALRM, alarmHandler);
@@ -349,7 +347,7 @@ int llwrite(const unsigned char *packet, int packetSize) {
   alarm(connectionParameters.timeout);
 
   uint8_t receivedAddr = 0, receivedCtrl = 0;
-  while (state != STOP && alarmCount <= connectionParameters.timeout) {
+  while (state != STOP && alarmCount <= connectionParameters.nRetransmissions) {
     uint8_t buf = 0;
     int retv = readByteSerialPort(&buf);
 
@@ -404,7 +402,7 @@ int llwrite(const unsigned char *packet, int packetSize) {
     }
 
     if (state == STOP) {
-      if (receivedAddr == CTRL_REJ0 || receivedCtrl == CTRL_REJ1) {
+      if (receivedCtrl == CTRL_REJ0 || receivedCtrl == CTRL_REJ1) {
         alarmEnabled = TRUE;
         alarmCount = 0;
         printf("Rejected, trying again...");
@@ -435,6 +433,8 @@ int llwrite(const unsigned char *packet, int packetSize) {
     }
   }
 
+  printf("llwrite() end! \n");
+
   alarmDisable();
   return free(stuffedPacket), free(frame), -1;
 }
@@ -443,8 +443,10 @@ int llwrite(const unsigned char *packet, int packetSize) {
 // LLREAD
 ////////////////////////////////////////////////
 int llread(unsigned char *packet) {
-  if (packet == NULL)
+  if (packet == NULL) {
+    printf("Packet in llread is null! \n");
     return -1;
+  }
 
   t_state state = START;
 
@@ -478,7 +480,7 @@ int llread(unsigned char *packet) {
         case A_RCV:
           if (buf == CTRL_INFO0 || buf == CTRL_INFO1) {
             state = C_RCV;
-            receivedCtrl = retv;
+            receivedCtrl = buf;
           }
           else if (buf == FLAG)
             state = FLAG_RCV;
@@ -506,9 +508,11 @@ int llread(unsigned char *packet) {
             uint8_t receivedBCC2 = destuffedPacket[newSize - 1];
 
             uint8_t bcc2 = 0x00;
-            for (size_t i = 0; i < newSize; i++) bcc2 ^= destuffedPacket[i];
+            for (size_t i = 0; i < newSize - 1; i++) bcc2 ^= destuffedPacket[i];
 
+            newSize--;
             uint8_t *response;
+
 
             if (bcc2 == receivedBCC2) {
               response = (receivedCtrl == CTRL_INFO0) ? RR1_Command : RR0_Command;
@@ -530,7 +534,6 @@ int llread(unsigned char *packet) {
             if (response == REJ0_Command || response == REJ1_Command) {
 
               // TODO: Save error frame number to stats
-
               free(destuffedPacket);
               break;
             }
@@ -542,7 +545,7 @@ int llread(unsigned char *packet) {
               // TODO: Add bytes read and number of frames to stats
 
               free(packet);
-              packet = destuffedPacket;
+              memcpy(packet, destuffedPacket, newSize);
               return newSize;
             }
 
@@ -572,15 +575,15 @@ int llclose(int showStatistics) {
         break;
       if (writeBytesSerialPort(frame_buffers[UA_Tx], BUF_SIZE) < 0)
         break;
-      printf("Disconnected! \n");
+      printf("Disconnected Transmitter! \n");
       break;
-      
+
     case LlRx:
       if (receiveFrame(ADDR_SEND, CTRL_DISC))
         break;
       if (transmitFrame(ADDR_RCV, CTRL_UA, DISC_Rx))
         break;
-      printf("Disconnected! \n");
+      printf("Disconnected Receiver! \n");
       break;
   }
 
