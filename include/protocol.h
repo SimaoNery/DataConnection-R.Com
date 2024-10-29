@@ -60,4 +60,16 @@ typedef enum e_state
     STOP
 }   t_state;
 
+t_frame *newSUFrame(t_frame_addr addr, t_frame_ctrl ctrl);
+
+#define SET_Command newSUFrame(ADDR_SEND, CTRL_SET)
+#define UA_Rx_Response newSUFrame(ADDR_SEND, CTRL_UA)
+#define UA_Tx_Response newSUFrame(ADDR_RCV, CTRL_UA)
+#define DISC_Rx_Command newSUFrame(ADDR_RCV, CTRL_DISC)
+#define DISC_Tx_Command newSUFrame(ADDR_SEND, CTRL_DISC)
+#define RR0_Command newSUFrame(ADDR_SEND, CTRL_RR0)
+#define RR1_Command newSUFrame(ADDR_SEND, CTRL_RR1)
+#define REJ0_Command newSUFrame(ADDR_SEND, CTRL_REJ0)
+#define REJ1_Command newSUFrame(ADDR_SEND, CTRL_REJ1)
+
 #endif
