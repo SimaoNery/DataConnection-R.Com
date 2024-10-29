@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-#include <time.h>
+#include <sys/time.h>
 
 #define TROP = 0
 
@@ -17,7 +17,7 @@ typedef struct s_statistics {
   struct timeval start;
 } t_statistics;
 
-#define TIME_DIFF(x, y) ((x.tv_sec - y.tv_sec) + (x.tv_usec - y.tv_usec) / 1e6)
+#define TIME_DIFF(ti, tf) ((tf.tv_sec - ti.tv_sec) + (tf.tv_usec - ti.tv_usec) / 1e6)
 
 uint8_t *ultoua(size_t n);
 size_t uatoi(uint8_t *n, uint8_t size);
