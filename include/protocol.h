@@ -60,7 +60,7 @@ typedef enum e_state
     STOP
 }   t_state;
 
-t_frame *newSUFrame(t_frame_addr addr, t_frame_ctrl ctrl);
+t_frame newSUFrame(t_frame_addr addr, t_frame_ctrl ctrl);
 
 #define SET_Command newSUFrame(ADDR_SEND, CTRL_SET)
 #define UA_Rx_Response newSUFrame(ADDR_SEND, CTRL_UA)

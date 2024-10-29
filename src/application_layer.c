@@ -18,9 +18,9 @@
 
 typedef struct s_fileinfo
 {
-    size_t  size;
-    char    *name;
-    size_t  receivedSize;
+    size_t size;
+    char *name;
+    size_t receivedSize;
 } t_file_info;
 
 int sendDataPacket(size_t dataSize, size_t sequenceNumber, uint8_t *data)
@@ -46,7 +46,7 @@ int sendControlPacket(uint8_t controlField, const char *fileName, size_t fileSiz
 {
     if (fileName == NULL)
     {
-        printf("File name is null! \n");
+        printf("File name is null!\n");
         return -1;
     }
 
@@ -63,7 +63,7 @@ int sendControlPacket(uint8_t controlField, const char *fileName, size_t fileSiz
     uint8_t *packet = calloc(1 + 2 + l1 + 2 + l2, sizeof(uint8_t));
     if (packet == NULL)
     {
-        printf("Packet is null! \n");
+        printf("Packet is null!\n");
         return free(v1), -1;
     }
 
@@ -93,6 +93,8 @@ uint8_t *parseDataPacket(uint8_t *packet, size_t expectedSequence, size_t *retSi
     if (expectedSequence != (size_t)packet[1])
         return NULL;
 
+    printf("Received packet %d\n", packet[1]);
+
     return packet + 4;
 }
 
@@ -100,7 +102,7 @@ int parseControlPacket(t_file_info *fileInfo, uint8_t *packet, int *isReceiving)
 {
     if (fileInfo == NULL || packet == NULL || isReceiving == NULL)
     {
-        printf("Something is wrong with parse control packet! \n");
+        printf("Something is wrong with parse control packet!\n");
         return -1;
     }
 
@@ -115,7 +117,7 @@ int parseControlPacket(t_file_info *fileInfo, uint8_t *packet, int *isReceiving)
     char *fileName = calloc(1000, sizeof(char));
     if (fileName == NULL)
     {
-        printf("Coulnt allocate memory for filename! \n");
+        printf("Couldn't allocate memory for filename!\n");
         return -1;
     }
 
@@ -173,7 +175,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 {
     if (serialPort == NULL || role == NULL || filename == NULL)
     {
-        printf("Error trying to initialize the application layer protocol! \n");
+        printf("Error trying to initialize the application layer protocol!\n");
         exit(-1);
     }
 
@@ -189,14 +191,16 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     FILE *file = NULL;
     uint8_t *buffer = NULL;
 
+    printf("\n");
+
     if (llopen(connectionParameters) < 0)
     {
-        printf("Error trying to start connection! \n");
+        printf("Error trying to start connection!\n");
         llclose(FALSE);
         return;
     }
 
-    printf("\n General Connection Was Established! \nStarting data sharing! \n \n ");
+    printf("\nGeneral Connection Was Established!\nStarting data sharing!\n\n");
 
     switch (connectionParameters.role)
     {
@@ -204,7 +208,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         file = fopen(filename, "rb");
         if (file == NULL)
         {
-            printf("Couldn't find the file! \n");
+            printf("Couldn't find the file!\n");
             llclose(FALSE);
             return;
         }
@@ -214,7 +218,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
         if (sendControlPacket(CTRL_START, filename, fileSize) < 0)
         {
-            printf("Couln't send control packet! \n");
+            printf("Couln't send control packet!\n");
             fclose(file);
             llclose(FALSE);
             return;
@@ -226,7 +230,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         buffer = malloc(MAX_PAYLOAD_SIZE + 20);
         if (buffer == NULL)
         {
-            printf("Couldn't allocate buffer memory! \n");
+            printf("Couldn't allocate buffer memory!\n");
             llclose(FALSE);
             return;
         }
@@ -234,32 +238,32 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         size_t sequenceNumber = 0;
         while ((bytes = fread(buffer, 1, MAX_PAYLOAD_SIZE, file)) > 0)
         {
-            size_t sendedData = sendDataPacket(bytes, sequenceNumber, buffer);
+            long sendedData = sendDataPacket(bytes, sequenceNumber, buffer);
             if (sendedData < 0)
             {
-                printf("Error sending data packet! \n");
+                printf("Error sending data packet!\n");
                 free(buffer);
                 fclose(file);
                 llclose(FALSE);
                 return;
             }
 
-            printf("Sent packet %ld \n", sequenceNumber);
+            printf("Sent packet %ld\n", sequenceNumber);
             sequenceNumber = sequenceNumber >= 99 ? 0 : sequenceNumber + 1;
         }
 
-        printf("All data has been sent! \n");
+        printf("All data has been sent!\n");
 
         if (sendControlPacket(CTRL_END, filename, fileSize) < 0)
         {
-            printf("Error sending end control packet! \n");
+            printf("Error sending end control packet!\n");
             fclose(file);
             free(buffer);
             llclose(FALSE);
             return;
         }
 
-        printf("Sent END control packet! \n");
+        printf("Sent END control packet!\n");
 
         fclose(file);
         free(buffer);
@@ -269,7 +273,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         file = fopen(filename, "wb");
         if (file == NULL)
         {
-            printf("Couldn't find the file! \n");
+            printf("Couldn't find the file!\n");
             llclose(FALSE);
             return;
         }
@@ -277,7 +281,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         buffer = malloc(MAX_PAYLOAD_SIZE + 20);
         if (buffer == NULL)
         {
-            printf("Couldn't allocate buffer memory! \n");
+            printf("Couldn't allocate buffer memory!\n");
             llclose(FALSE);
             return;
         }
@@ -291,7 +295,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             bytes = llread(buffer);
             if (bytes <= 0)
             {
-                printf("Failed to read! \n");
+                printf("Failed to read!\n");
                 fclose(file);
                 free(buffer);
                 llclose(FALSE);
@@ -301,21 +305,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             if (bytes == 0)
                 continue;
 
-            printf("buffer[0] value: %d\n", buffer[0]);
-
             if (buffer[0] == CTRL_START || buffer[0] == CTRL_END)
             {
                 if (parseControlPacket(&fileInfo, buffer, &isReceiving) < 0)
                 {
-                    printf("Error parsing control packet! \n");
+                    printf("Error parsing control packet!\n");
 
                     fclose(file);
                     free(buffer);
                     llclose(FALSE);
                     return;
                 }
-
-                printf("Parsed a control packet! \n");
             }
 
             if (buffer[0] == DATA)
@@ -323,7 +323,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 uint8_t *receivedData = parseDataPacket(buffer, expectedNumber, &bytes);
                 if (receivedData == NULL)
                 {
-                    printf("Error parsing data packet! \n");
+                    printf("Error parsing data packet!\n");
 
                     fclose(file);
                     free(buffer);
@@ -338,7 +338,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             }
         }
 
-        printf("All data has been received! \n");
+        printf("All data has been received!\n");
 
         fclose(file);
         free(buffer);
@@ -349,9 +349,11 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         break;
     }
 
+    printf("\n");
+
     if (llclose(TRUE) < 0)
     {
-        printf("Error trying to disconnect! \n");
+        printf("Error trying to disconnect!\n");
         exit(-1);
     }
 }
