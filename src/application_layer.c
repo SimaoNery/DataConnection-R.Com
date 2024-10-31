@@ -218,7 +218,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
         if (sendControlPacket(CTRL_START, filename, fileSize) < 0)
         {
-            printf("Couln't send control packet!\n");
+            printf("Couldn't send control packet!\n");
             fclose(file);
             llclose(FALSE);
             return;
@@ -227,7 +227,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         printf("Sent START control packet! \n");
 
         bytes = 0;
-        buffer = malloc(MAX_PAYLOAD_SIZE + 20);
+        buffer = malloc(MAX_PAYLOAD_SIZE / 2 + 20);
         if (buffer == NULL)
         {
             printf("Couldn't allocate buffer memory!\n");
@@ -236,7 +236,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         }
 
         size_t sequenceNumber = 0;
-        while ((bytes = fread(buffer, 1, MAX_PAYLOAD_SIZE, file)) > 0)
+        while ((bytes = fread(buffer, 1, MAX_PAYLOAD_SIZE / 2, file)) > 0)
         {
             long sendedData = sendDataPacket(bytes, sequenceNumber, buffer);
             if (sendedData < 0)
@@ -278,7 +278,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             return;
         }
 
-        buffer = malloc(MAX_PAYLOAD_SIZE + 20);
+        buffer = malloc(MAX_PAYLOAD_SIZE / 2 + 20);
         if (buffer == NULL)
         {
             printf("Couldn't allocate buffer memory!\n");

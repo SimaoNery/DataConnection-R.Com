@@ -28,6 +28,7 @@ int alarmCount = 0;
 void alarmHandler(int signal) {
   alarmCount++;
   alarmEnabled = TRUE;
+  printf("[alarmHandler] Alarm %d\n", alarmCount);
 }
 
 void alarmDisable() {
@@ -38,7 +39,7 @@ void alarmDisable() {
 
 t_frame newFrame(t_frame_addr addr, t_frame_ctrl ctrl, uint8_t *data, size_t dataSize) {
   if ((ctrl == CTRL_INFO0 || ctrl == CTRL_INFO1) && data == NULL)
-    return printf("INFO frames require data fields\n"), (t_frame){0};
+    return printf("[newFrame] INFO frames require data fields\n"), (t_frame){0};
 
   t_frame ret;
 
@@ -302,7 +303,7 @@ int transmitFrame(t_frame toSend, t_frame expected) {
   }
 
   alarmDisable();
-  return free(frameString), 0;
+  return free(frameString), -1;
 }
 
 ////////////////////////////////////////////////
@@ -310,6 +311,8 @@ int transmitFrame(t_frame toSend, t_frame expected) {
 ////////////////////////////////////////////////
 int llopen(LinkLayer connection) {
   gettimeofday(&stats.start, NULL);
+
+  struct timeval start;
 
   memcpy(&connectionParameters, &connection, sizeof(connection));
 
@@ -319,7 +322,6 @@ int llopen(LinkLayer connection) {
 
   switch (connectionParameters.role) {
     case LlTx:
-      struct timeval start;
       gettimeofday(&start, NULL);
 
       if (transmitFrame(SET_Command, UA_Rx_Response))
@@ -484,7 +486,7 @@ int llread(unsigned char *packet) {
     int retv = readByteSerialPort(&buf);
 
     if (retv < 0) {
-      printf("Error reading from serial port\n");
+      printf("[llread] Error reading from serial port\n");
       return -1;
     }
 
@@ -535,17 +537,15 @@ int llread(unsigned char *packet) {
 
             t_frame response;
 
-            // TODO: why is it like this?
-            if (bcc2 == frame.bcc2) {
+            if (bcc2 == frame.bcc2 && 
+              ((frameNumber == 0 && frame.c == CTRL_INFO0)
+              || (frameNumber == 1 && frame.c == CTRL_INFO1)))
+            {
               response = (frame.c == CTRL_INFO0) ? RR1_Command : RR0_Command;
             }
-            else {
-              if ((frameNumber == 0 && frame.c == CTRL_INFO1) || (frameNumber == 1 && frame.c == CTRL_INFO0)) {
-                response = (frame.c == CTRL_INFO0) ? RR1_Command : RR0_Command;
-              }
-              else {
-                response = (frame.c == CTRL_INFO0) ? REJ0_Command : REJ1_Command;
-              }
+            else 
+            {
+              response = (frame.c == CTRL_INFO0) ? REJ0_Command : REJ1_Command;
             }
 
             state = START;
@@ -572,6 +572,14 @@ int llread(unsigned char *packet) {
             continue;
           }
 
+          if (idx > MAX_PAYLOAD_SIZE)
+          {
+            printf("[llread] Payload is too big! Returning to start\n");
+            state = START;
+            idx = 0;
+            continue;
+          }
+
           packet[idx++] = buf;
 
           break;
@@ -588,10 +596,11 @@ int llread(unsigned char *packet) {
 // LLCLOSE
 ////////////////////////////////////////////////
 int llclose(int showStatistics) {
+  
+  struct timeval start;
+
   switch (connectionParameters.role) {
     case LlTx:
-
-      struct timeval start;
       gettimeofday(&start, NULL);
 
       if (transmitFrame(DISC_Tx_Command, DISC_Rx_Command))
