@@ -51,3 +51,24 @@ size_t uatoi(uint8_t* n, uint8_t size)
         ret = ret * 10 + n[i] - '0';
     return ret;
 }
+
+int spError(char *funcName, int isRead)
+{
+    if (isRead)
+        printf("[%s] Got error reading from serial port\n", funcName);
+    else
+        printf("[%s] Got error writing to serial port\n", funcName);
+    return -1;
+}
+
+int err(char *funcName, char *msg)
+{
+    info(funcName, msg);
+    return -1;
+}
+
+void info(char *funcName, char *msg)
+{
+    printf("[%s] %s\n", funcName, msg);
+}
+
