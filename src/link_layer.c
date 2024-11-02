@@ -576,8 +576,7 @@ int llread(unsigned char *packet)
 
                     t_frame response;
 
-                    if (bcc2 == frame.bcc2 &&
-                        ((frameNumber == 0 && frame.c == CTRL_INFO0) || (frameNumber == 1 && frame.c == CTRL_INFO1)))
+                    if (bcc2 == frame.bcc2)
                     {
                         response = (frame.c == CTRL_INFO0) ? RR1_Command : RR0_Command;
                     }
