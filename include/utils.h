@@ -6,8 +6,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#define TROP = 0
-
 typedef struct s_statistics {
   size_t bytes_read;
   size_t n_frames;
